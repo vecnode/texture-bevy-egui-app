@@ -2,6 +2,8 @@
 
 A small Bevy + Egui desktop app template for texture workspace UI experiments, with WASM compilation support.
 
+![desktop_screenshot](./assets/image_1.png)
+
 ### Dependencies
 
 ```sh

@@ -1,12 +1,12 @@
 [package]
-name = "web-ml"
+name = "texture-bevy-egui-app"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
-bevy = { version = "0.18", features = ["free_camera"] }
+bevy = "0.18"
 bevy_egui = "0.39.1"
-burn = "0.20"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

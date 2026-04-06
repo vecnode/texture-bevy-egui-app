@@ -54,47 +54,47 @@ pub fn update_texture_aspect_ratio(
                 // Ensure material remains unlit to display texture exactly as in the image
                 material.unlit = true;
                 
-                if let Some(texture_handle) = &material.base_color_texture {
-                    if let Some(image) = images.get(texture_handle) {
-                        let texture_width = image.width() as f32;
-                        let texture_height = image.height() as f32;
-                        let texture_aspect = texture_width / texture_height;
-                        let plane_aspect = size_x / size_z;
-                        
-                        match texture_mode_state.current {
-                            TextureMode::Normal => {
-                                // Maintain texture's original aspect ratio and center it
-                                let (scale_x, scale_z, offset_x, offset_z) = if texture_aspect > plane_aspect {
-                                    // Texture is wider relative to its height than the plane
-                                    // Fit texture to plane's width, scale height proportionally, center vertically
-                                    let scale = size_x / texture_width; // Scale to fit width
-                                    let scaled_height = texture_height * scale;
-                                    let scale_z = scaled_height / size_z; // UV scale in Z direction
-                                    let offset_z = (1.0 - scale_z) * 0.5; // Center vertically in UV space
-                                    (1.0, scale_z, 0.0, offset_z)
-                                } else {
-                                    // Texture is taller relative to its width than the plane
-                                    // Fit texture to plane's height, scale width proportionally, center horizontally
-                                    let scale = size_z / texture_height; // Scale to fit height
-                                    let scaled_width = texture_width * scale;
-                                    let scale_x = scaled_width / size_x; // UV scale in X direction
-                                    let offset_x = (1.0 - scale_x) * 0.5; // Center horizontally in UV space
-                                    (scale_x, 1.0, offset_x, 0.0)
-                                };
-                                
-                                // Create UV transform using Affine2 to scale and offset texture
-                                // Affine2 represents a 2D affine transformation (scale + translation)
-                                let scale = Vec2::new(scale_x, scale_z);
-                                let translation = Vec2::new(offset_x, offset_z);
-                                let uv_transform = Affine2::from_scale_angle_translation(scale, 0.0, translation);
-                                
-                                // Update material with UV transform
-                                material.uv_transform = uv_transform;
-                            }
-                            TextureMode::Stretch => {
-                                // Stretch texture to fill the plane (default behavior)
-                                material.uv_transform = Affine2::IDENTITY;
-                            }
+                if let Some(texture_handle) = &material.base_color_texture
+                    && let Some(image) = images.get(texture_handle)
+                {
+                    let texture_width = image.width() as f32;
+                    let texture_height = image.height() as f32;
+                    let texture_aspect = texture_width / texture_height;
+                    let plane_aspect = size_x / size_z;
+                    
+                    match texture_mode_state.current {
+                        TextureMode::Normal => {
+                            // Maintain texture's original aspect ratio and center it
+                            let (scale_x, scale_z, offset_x, offset_z) = if texture_aspect > plane_aspect {
+                                // Texture is wider relative to its height than the plane
+                                // Fit texture to plane's width, scale height proportionally, center vertically
+                                let scale = size_x / texture_width; // Scale to fit width
+                                let scaled_height = texture_height * scale;
+                                let scale_z = scaled_height / size_z; // UV scale in Z direction
+                                let offset_z = (1.0 - scale_z) * 0.5; // Center vertically in UV space
+                                (1.0, scale_z, 0.0, offset_z)
+                            } else {
+                                // Texture is taller relative to its width than the plane
+                                // Fit texture to plane's height, scale width proportionally, center horizontally
+                                let scale = size_z / texture_height; // Scale to fit height
+                                let scaled_width = texture_width * scale;
+                                let scale_x = scaled_width / size_x; // UV scale in X direction
+                                let offset_x = (1.0 - scale_x) * 0.5; // Center horizontally in UV space
+                                (scale_x, 1.0, offset_x, 0.0)
+                            };
+                            
+                            // Create UV transform using Affine2 to scale and offset texture
+                            // Affine2 represents a 2D affine transformation (scale + translation)
+                            let scale = Vec2::new(scale_x, scale_z);
+                            let translation = Vec2::new(offset_x, offset_z);
+                            let uv_transform = Affine2::from_scale_angle_translation(scale, 0.0, translation);
+                            
+                            // Update material with UV transform
+                            material.uv_transform = uv_transform;
+                        }
+                        TextureMode::Stretch => {
+                            // Stretch texture to fill the plane (default behavior)
+                            material.uv_transform = Affine2::IDENTITY;
                         }
                     }
                 }

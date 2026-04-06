@@ -2,23 +2,38 @@
 // Copyright (C) 2026 vecnode
 
 use bevy::prelude::*;
+use crate::components::{GridLine, GridState, TexturedPlane};
 use crate::constants::*;
 
 pub fn spawn_grid(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    grid_state: Option<Res<crate::components::GridState>>,
+    grid_state: Res<GridState>,
 ) {
-    // Use grid_state if available, otherwise use default values (10x10)
-    let size_x = grid_state.as_ref().map(|gs| gs.size_x).unwrap_or(10) as f32;
-    let size_z = grid_state.as_ref().map(|gs| gs.size_z).unwrap_or(10) as f32;
+    spawn_grid_lines(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        grid_state.size_x,
+        grid_state.size_z,
+    );
+}
+
+pub fn spawn_grid_lines(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    size_x: i32,
+    size_z: i32,
+) {
+    let size_x = size_x as f32;
+    let size_z = size_z as f32;
     let half_size_x = size_x / 2.0;
     let half_size_z = size_z / 2.0;
-    let num_lines_x = grid_state.as_ref().map(|gs| gs.size_x).unwrap_or(10) + 1;
-    let num_lines_z = grid_state.as_ref().map(|gs| gs.size_z).unwrap_or(10) + 1;
+    let num_lines_x = size_x as i32 + 1;
+    let num_lines_z = size_z as i32 + 1;
     
-    // Create grid lines along X axis (parallel to Z) - these lines span the X direction
     for i in 0..num_lines_z {
         let z = -half_size_z + (i as f32 * GRID_SPACING);
         commands.spawn((
@@ -26,11 +41,10 @@ pub fn spawn_grid(
             MeshMaterial3d(materials.add(GRID_COLOR)),
             Transform::from_translation(Vec3::new(0.0, 0.0, z))
                 .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-            crate::components::GridLine,
+            GridLine,
         ));
     }
     
-    // Create grid lines along Z axis (parallel to X) - these lines span the Z direction
     for i in 0..num_lines_x {
         let x = -half_size_x + (i as f32 * GRID_SPACING);
         commands.spawn((
@@ -38,7 +52,7 @@ pub fn spawn_grid(
             MeshMaterial3d(materials.add(GRID_COLOR)),
             Transform::from_translation(Vec3::new(x, 0.0, 0.0))
                 .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-            crate::components::GridLine,
+            GridLine,
         ));
     }
 }
@@ -47,31 +61,23 @@ pub fn spawn_textured_plane(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    grid_state: Option<Res<crate::components::GridState>>,
+    grid_state: Res<GridState>,
 ) {
-    // Use grid_state if available, otherwise use default values (10x10)
-    let size_x = grid_state.as_ref().map(|gs| gs.size_x).unwrap_or(10) as f32;
-    let size_z = grid_state.as_ref().map(|gs| gs.size_z).unwrap_or(10) as f32;
+    let size_x = grid_state.size_x as f32;
+    let size_z = grid_state.size_z as f32;
     
-    // Create a plane mesh that matches the grid size using Rectangle
-    // Rectangle is 1x1 by default, so we scale it to match grid dimensions
     let plane_mesh = meshes.add(Rectangle::new(size_x, size_z));
-    
-    // Create material without texture
     let material = materials.add(StandardMaterial {
         unlit: true,
         ..default()
     });
-    
-    // Spawn the plane slightly above the grid (y = 0.01) to ensure it's visible above grid lines
-    // Rotate -90 degrees around X axis to make it horizontal (floor plane)
-    // Then rotate 180 degrees around Z axis to flip the texture right-side up when viewed from above
+
     commands.spawn((
         Mesh3d(plane_mesh),
         MeshMaterial3d(material),
         Transform::from_translation(Vec3::new(0.0, 0.01, 0.0))
             .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_z(std::f32::consts::PI)),
-        crate::components::TexturedPlane,
+        TexturedPlane,
     ));
 }
 

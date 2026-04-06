@@ -8,6 +8,8 @@ mod systems;
 
 use bevy::prelude::*;
 use bevy::camera::Viewport;
+use bevy::log::LogPlugin;
+use bevy::window::WindowResolution;
 use bevy_egui::{EguiPlugin, EguiGlobalSettings, PrimaryEguiContext, EguiPrimaryContextPass};
 
 use setup::*;
@@ -18,13 +20,20 @@ use constants::WORLD_BACKGROUND_COLOR;
 fn main() {
     App::new()
         .add_plugins(
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    resizable: false,
+            DefaultPlugins
+                .set(LogPlugin {
+                    filter: "info,bevy_render::view::window=error".into(),
                     ..default()
-                }),
-                ..default()
-            })
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "texture-bevy-egui-app".into(),
+                        resolution: WindowResolution::new(960, 640),
+                        resizable: true,
+                        ..default()
+                    }),
+                    ..default()
+                })
         )
         .add_plugins(EguiPlugin::default())
         .insert_resource(EguiGlobalSettings {
@@ -32,11 +41,8 @@ fn main() {
             ..default()
         })
         .insert_resource(ClearColor(WORLD_BACKGROUND_COLOR))
-        .init_resource::<components::CameraProjectionState>()
         .init_resource::<components::EguiLayoutState>()
         .init_resource::<components::GridState>()
-        .init_resource::<components::StreamsPanelState>()
-        .init_resource::<components::LoadedTextures>()
         .init_resource::<components::AspectRatioState>()
         .init_resource::<components::TextureModeState>()
         .add_systems(
@@ -56,12 +62,8 @@ fn main() {
             ),
         )
         .add_systems(
-            Update,
-            update_camera_viewports,
-        )
-        .add_systems(
             EguiPrimaryContextPass,
-            egui_controls_ui,
+            (egui_controls_ui, update_camera_viewports).chain(),
         )
         .run();
 }
@@ -91,7 +93,7 @@ fn setup_split_screen_cameras(
     // Primary Egui context camera (renders UI on top)
     commands.spawn((
         PrimaryEguiContext,
-        Camera2d::default(),
+        Camera2d,
         Camera {
             order: 10,
             clear_color: ClearColorConfig::Custom(Color::NONE),
@@ -107,30 +109,21 @@ fn update_camera_viewports(
 ) {
     let Ok(window) = window.single() else { return };
     let physical_size = window.physical_size();
-    let scale_factor = window.scale_factor() as f32;
-    
-    // Use actual panel positions from Egui layout (in logical pixels, convert to physical)
-    let left_panel_end_physical = (layout_state.left_panel_end_x * scale_factor) as u32;
-    let top_bars_height_physical = (layout_state.top_bars_height * scale_factor) as u32;
-    let bottom_bar_height_physical = (layout_state.bottom_bar_height * scale_factor) as u32;
-    
-    // Calculate viewport width: extend to right edge if inspector is collapsed, otherwise stop at inspector
-    let viewport_right_edge = if layout_state.inspector_collapsed {
-        physical_size.x // Extend to right edge of window when inspector is hidden
-    } else {
-        (layout_state.right_panel_start_x * scale_factor) as u32 // Stop at inspector when visible
-    };
-    
-    // Calculate total available space: from left panel end to right edge (inspector or window edge)
-    // Height: from below top bars to above bottom bar
-    let total_viewport_width = viewport_right_edge.saturating_sub(left_panel_end_physical);
-    let viewport_height = physical_size.y.saturating_sub(top_bars_height_physical).saturating_sub(bottom_bar_height_physical);
-    
-    // Camera viewport always visible - uses full available width
+    let scale_factor = window.scale_factor();
+
+    // Ceil left/top and floor right/bottom so the 3D viewport never intrudes into UI panels.
+    let viewport_left = (layout_state.viewport_left * scale_factor).ceil() as u32;
+    let viewport_top = (layout_state.viewport_top * scale_factor).ceil() as u32;
+    let viewport_right = (layout_state.viewport_right * scale_factor).floor() as u32;
+    let viewport_bottom = (layout_state.viewport_bottom * scale_factor).floor() as u32;
+
     if let Ok(mut camera) = right_camera.single_mut() {
         camera.viewport = Some(Viewport {
-            physical_position: UVec2::new(left_panel_end_physical, top_bars_height_physical),
-            physical_size: UVec2::new(total_viewport_width, viewport_height),
+            physical_position: UVec2::new(viewport_left, viewport_top),
+            physical_size: UVec2::new(
+                viewport_right.min(physical_size.x).saturating_sub(viewport_left),
+                viewport_bottom.min(physical_size.y).saturating_sub(viewport_top),
+            ),
             ..default()
         });
     }
